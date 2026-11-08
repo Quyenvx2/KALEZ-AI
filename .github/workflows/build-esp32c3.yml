@@ -1,0 +1,49 @@
+name: Build ESP32-C3 SuperMini firmware
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "source/xiaozhi-esp32/**"
+      - "BUILD-FIRMWARE.command"
+      - "README-VI.md"
+      - ".github/workflows/build-esp32c3.yml"
+  pull_request:
+    paths:
+      - "source/xiaozhi-esp32/**"
+      - "BUILD-FIRMWARE.command"
+      - "README-VI.md"
+      - ".github/workflows/build-esp32c3.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: esp32c3-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build with ESP-IDF 5.5.2
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.2
+          target: esp32c3
+          path: source/xiaozhi-esp32
+          command: python scripts/release.py pocket-wall-e-c3 --name pocket-wall-e-c3-pocket-esp-ai-by-huy-vector-en
+
+      - name: Package flash images and generated offsets
+        run: python source/xiaozhi-esp32/scripts/package_firmware_artifacts.py
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocket-esp32c3-${{ github.sha }}
+          path: source/xiaozhi-esp32/firmware-artifact/
+          if-no-files-found: error
+          retention-days: 30

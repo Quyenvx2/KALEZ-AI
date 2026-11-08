@@ -1,0 +1,23 @@
+﻿# Build outputs
+build/
+dist/
+firmware-artifact/
+managed_components/
+
+# Firmware binaries and generated files
+*.bin
+*.elf
+*.map
+*.hex
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+secrets/
