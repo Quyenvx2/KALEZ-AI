@@ -43,7 +43,7 @@ jobs:
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pocket-esp32c3-${{ github.sha }}
+          name: kalez-ai-esp32c3-${{ github.sha }}
           path: source/xiaozhi-esp32/firmware-artifact/
           if-no-files-found: error
           retention-days: 30

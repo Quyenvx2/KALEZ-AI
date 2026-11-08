@@ -28,13 +28,37 @@
 Ota::Ota() {
 #ifdef ESP_EFUSE_BLOCK_USR_DATA
     // Read Serial Number from efuse user_data
-    uint8_t serial_number[33] = {0};
+    uint8_t serial_number[32] = {0};
     if (esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA, serial_number, 32 * 8) == ESP_OK) {
-        if (serial_number[0] == 0) {
-            has_serial_number_ = false;
-        } else {
-            serial_number_ = std::string(reinterpret_cast<char*>(serial_number), 32);
+        // USER_DATA is not guaranteed to contain an ASCII serial. Only send it
+        // using activation v2 when it is a complete, printable, NUL-padded ID.
+        size_t serial_length = 0;
+        while (serial_length < sizeof(serial_number) && serial_number[serial_length] != 0) {
+            const uint8_t value = serial_number[serial_length];
+            if (value < 0x20 || value > 0x7e) {
+                break;
+            }
+            ++serial_length;
+        }
+        bool has_non_space = false;
+        for (size_t i = 0; i < serial_length; ++i) {
+            has_non_space = has_non_space || serial_number[i] != ' ';
+        }
+        bool valid_serial = serial_length > 0 && has_non_space;
+        if (valid_serial) {
+            for (size_t i = serial_length; i < sizeof(serial_number); ++i) {
+                if (serial_number[i] != 0) {
+                    valid_serial = false;
+                    break;
+                }
+            }
+        }
+        if (valid_serial) {
+            serial_number_ = std::string(reinterpret_cast<char*>(serial_number), serial_length);
             has_serial_number_ = true;
+        } else {
+            has_serial_number_ = false;
+            ESP_LOGW(TAG, "Ignoring invalid eFuse serial data; using activation v1");
         }
     }
 #endif
@@ -63,7 +87,7 @@ std::unique_ptr<Http> Ota::SetupHttp() {
     http->SetHeader("Client-Id", board.GetUuid());
     if (has_serial_number_) {
         http->SetHeader("Serial-Number", serial_number_.c_str());
-        ESP_LOGI(TAG, "Setup HTTP, User-Agent: %s, Serial-Number: %s", user_agent.c_str(), serial_number_.c_str());
+        ESP_LOGI(TAG, "Setup HTTP, User-Agent: %s, activation version 2", user_agent.c_str());
     }
     http->SetHeader("User-Agent", user_agent);
     http->SetHeader("Accept-Language", Lang::CODE);

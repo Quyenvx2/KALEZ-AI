@@ -1,117 +1,76 @@
-# Pocket ESP AI by Huy Vector
+# KALEZ AI cho ESP32-C3 SuperMini
 
-Project XiaoZhi AI dành cho ESP32-C3 SuperMini, màn OLED SSD1306 0.96 inch,
-micro INMP441 và ampli MAX98357A.
+KALEZ AI là firmware tùy biến dựa trên nền tảng XiaoZhi và source Pocket ESP AI
+của Huy Vector. Bản build nhắm tới ESP32-C3 SuperMini 4 MB, OLED SSD1306
+128x64, microphone INMP441 và amplifier MAX98357A.
 
-## Nội dung gói
+Source nền tảng và ghi nhận tác giả được giữ trong `source/xiaozhi-esp32`; xem
+`source/xiaozhi-esp32/LICENSE` và các thông tin bản quyền đi kèm.
 
-- `firmware/pocket-esp-ai-by-huy-vector-english.bin`: firmware hoàn chỉnh,
-  nạp tại địa chỉ `0x0`.
-- `source/xiaozhi-esp32`: toàn bộ mã nguồn có thể build lại.
-- `FLASH-FIRMWARE.command`: nạp nhanh firmware trên macOS.
-- `BUILD-FIRMWARE.command`: build lại source bằng ESP-IDF.
+## Phần cứng
 
-## Tính năng hiện tại
+| Linh kiện | Chân ESP32-C3 |
+| --- | ---: |
+| OLED SDA / SCL | GPIO21 / GPIO20 |
+| INMP441 SCK / WS / SD | GPIO2 / GPIO1 / GPIO8 |
+| MAX98357A BCLK / LRC / DIN | GPIO2 / GPIO1 / GPIO3 |
+| Nút chức năng | GPIO10 |
 
-- Giao diện tiếng Anh.
-- Wake word: **Hi ESP**.
-- Tên thiết bị: **pocket-esp-ai-by-huy-vector**.
-- Mắt hoạt hình toàn bộ vùng trên của OLED, dòng trạng thái ở phía dưới.
-- Màn OLED đảo màu theo cấu hình hiện tại.
-- Thu âm bằng INMP441, phát âm thanh qua MAX98357A.
-- Có xử lý DC và AGC cho tín hiệu micro.
-- Wi-Fi provisioning của XiaoZhi và nút chức năng ngoài.
+BCLK và WS/LRC được dùng chung cho microphone và amplifier. Nối INMP441 L/R
+xuống GND; cấp 3.3 V cho OLED và microphone, 5 V cho amplifier, và nối chung GND.
+Không thay đổi GPIO trong board profile nếu phần cứng đang hàn theo sơ đồ này.
 
-## Sơ đồ đấu dây
+## Wi-Fi và XiaoZhi Cloud
 
-| Thiết bị | Chân module | ESP32-C3 SuperMini |
-| --- | --- | ---: |
-| OLED SSD1306 | SDA | GPIO21 |
-| OLED SSD1306 | SCL | GPIO20 |
-| INMP441 | SCK/BCLK | GPIO2 |
-| INMP441 | WS/LRC | GPIO1 |
-| INMP441 | SD | GPIO8 |
-| INMP441 | L/R | GND |
-| MAX98357A | BCLK | GPIO2 |
-| MAX98357A | LRC | GPIO1 |
-| MAX98357A | DIN | GPIO3 |
-| Nút chức năng | một đầu | GPIO10 |
-| Nút chức năng | đầu còn lại | GND |
+Firmware dùng cơ chế Wi-Fi provisioning sẵn có của XiaoZhi. Nếu chưa lưu Wi-Fi,
+thiết bị vào chế độ cấu hình; sau khi kết nối Wi-Fi, firmware tiếp tục kiểm tra
+OTA/activation và nạp cấu hình MQTT hoặc WebSocket từ dịch vụ.
 
-Nguồn:
-
-- OLED và INMP441: `3.3V`.
-- MAX98357A: `5V`.
-- Tất cả module phải nối chung `GND`.
-- BCLK và LRC được dùng chung giữa micro và ampli.
-
-## Nạp nhanh trên macOS
-
-1. Cắm ESP32-C3 bằng cáp USB có truyền dữ liệu.
-2. Mở file `FLASH-FIRMWARE.command`.
-3. Nếu macOS chặn file, vào **System Settings > Privacy & Security** và chọn
-   **Open Anyway**, hoặc chạy trong Terminal:
-
-```sh
-chmod +x FLASH-FIRMWARE.command
-./FLASH-FIRMWARE.command
-```
-
-Script tự tìm cổng `/dev/cu.usb*`. Có thể chỉ định cổng thủ công:
-
-```sh
-PORT=/dev/cu.usbmodemXXXX ./FLASH-FIRMWARE.command
-```
-
-## Build lại source
-
-Máy cần cài ESP-IDF. Bản này đã được build bằng ESP-IDF 5.5.2. Chạy:
-
-```sh
-IDF_EXPORT=/duong-dan/toi/esp-idf/export.sh ./BUILD-FIRMWARE.command
-```
-
-Nếu không truyền `IDF_EXPORT`, script sẽ thử đường dẫn đã dùng trên máy phát
-triển:
-
-`/Users/huyvector/esp/v5.5.2/esp-idf/export.sh`
-
-Sau khi build thành công, firmware một-file nằm tại:
-
-`source/xiaozhi-esp32/build/merged-binary.bin`
+Tên **KALEZ AI** hiển thị trên OLED và được dùng làm DHCP hostname. Board name,
+Device ID, Client ID, endpoint và User-Agent gửi tới Cloud vẫn theo cấu hình
+XiaoZhi hiện có để tránh làm sai định danh mà server yêu cầu.
 
 ## Build bằng GitHub Actions
 
-Workflow `.github/workflows/build-esp32c3.yml` build biến thể ESP32-C3 bằng
-ESP-IDF 5.5.2, sau đó đăng artifact để tải trong mục **Actions** của GitHub.
-Có thể chạy thủ công bằng **Run workflow** hoặc để workflow tự chạy khi có thay
-đổi source.
+Workflow `.github/workflows/build-esp32c3.yml` dùng ESP-IDF 5.5.2 và profile
+`pocket-wall-e-c3` cho target `esp32c3`, flash 4 MB và partition
+`partitions/v2/4m.csv`. Từ repository trên GitHub, mở **Actions**, chọn
+**Build ESP32-C3 SuperMini firmware**, rồi chọn **Run workflow**. Artifact chỉ
+có sau khi job build và đóng gói hoàn tất thành công.
 
-Artifact chứa `merged-binary.bin` (nạp tại offset `0x0`), các BIN thành phần,
-`4m-partitions.csv`, bảng phân vùng nhị phân và `FLASH-MANIFEST.txt` / JSON.
-Offset của từng BIN thành phần được trích từ metadata do chính ESP-IDF tạo trong
-lần build đó; không điền offset giả định vào workflow. Script đóng gói cũng kiểm
-tra ảnh ứng dụng vừa factory partition trước khi xuất artifact.
+Artifact chứa:
 
-Ví dụ nạp merged BIN bằng esptool:
+- `merged-binary.bin` để nạp nguyên image tại offset `0x0`.
+- Các BIN thành phần và offset do ESP-IDF tạo trong `flasher_args.json`.
+- `partition-table.bin`, `4m-partitions.csv`, manifest TXT/JSON và SHA-256.
+
+Nạp merged image bằng esptool theo lệnh được ghi trong `FLASH-MANIFEST.txt`.
+Lệnh trong manifest lấy flash mode, flash size và tần số từ metadata build; thay
+`COMx` bằng cổng thiết bị. Merged image được ghi tại `0x0`. Nếu nạp các BIN
+riêng, dùng đúng offset trong manifest; không trộn merged image với các BIN
+riêng trong cùng lệnh.
+
+## Build cục bộ
+
+Máy build cần ESP-IDF 5.5.2 cùng ESP-IDF Component Manager. Từ thư mục
+`source/xiaozhi-esp32`, chạy:
 
 ```sh
-python -m esptool --chip esp32c3 --port COMx --baud 460800 write_flash 0x0 merged-binary.bin
+python scripts/release.py pocket-wall-e-c3 --name pocket-wall-e-c3-pocket-esp-ai-by-huy-vector-en
 ```
 
-Thay `COMx` bằng cổng nối với bo mạch. Để nạp các BIN thành phần riêng, dùng
-đúng danh sách offset trong `FLASH-MANIFEST.txt`. Không dùng `merged-binary.bin`
-cùng lúc với các BIN thành phần trong cùng lệnh.
+Lệnh này build đúng profile, tạo `build/merged-binary.bin` và gói build trong
+`releases/`. Chạy thêm script đóng gói để tạo manifest giống CI:
 
-## Lưu ý
+```sh
+python scripts/package_firmware_artifacts.py
+```
 
-- Firmware hiện tại được thiết kế để dùng đủ OLED, micro và ampli. OLED sai địa
-  chỉ hoặc đấu sai có thể khiến thiết bị khởi động lại trước khi phát Wi-Fi.
-- GPIO8 trên một số board C3 SuperMini còn nối với LED tích hợp. Nếu micro bị
-  nhiễu, cần kiểm tra phiên bản board thực tế.
-- Build thành công không thay thế cho việc thử trực tiếp toàn bộ phần cứng.
+## Firmware binary có sẵn trong gói nguồn
 
-SHA-256 của firmware:
+`firmware/pocket-esp-ai-by-huy-vector-english.bin` là binary gốc do Huy Vector
+cung cấp, không phải bản KALEZ AI được build từ những thay đổi hiện tại. SHA-256
+được cung cấp cùng gói gốc: `3d9dc6d68cc0eebaacb05f20fb4cc49fda7802eda21400483f1d9fcf2a01cf98`.
 
-`3d9dc6d68cc0eebaacb05f20fb4cc49fda7802eda21400483f1d9fcf2a01cf98`
-
+Chưa có build GitHub Actions hoặc build ESP-IDF cục bộ trong môi trường này;
+chưa thể cung cấp binary KALEZ AI mới hay xác nhận hoạt động trên phần cứng thật.

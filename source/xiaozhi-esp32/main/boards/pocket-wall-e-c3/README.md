@@ -1,4 +1,9 @@
-# Pocket Wall-E ESP32-C3 SuperMini
+# KALEZ AI for ESP32-C3 SuperMini
+
+This product variant is based on the Pocket ESP AI / XiaoZhi firmware platform.
+Original authorship, license terms and attribution remain in the upstream source
+and its `LICENSE` file. The internal `pocket-wall-e-c3` board profile is retained
+for build and XiaoZhi server compatibility.
 
 Compact Xiaozhi voice assistant for a 128x64 SSD1306 OLED, INMP441 microphone,
 MAX98357A amplifier, and one external action button.
@@ -15,7 +20,7 @@ MAX98357A amplifier, and one external action button.
 | INMP441 SD | 8 |
 | Action button to GND | 10 |
 
-The firmware targets common 4 MB ESP32-C3 SuperMini boards. It uses a single
+KALEZ AI targets common 4 MB ESP32-C3 SuperMini boards. It uses a single
 factory application partition, the English UI, and the lightweight WakeNet9s
 `Hi ESP` model. GPIO10 provides push-to-talk/toggle-chat control and Wi-Fi
 configuration access. The INMP441 L/R pin is tied to GND. The OLED and

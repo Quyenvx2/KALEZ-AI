@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <climits>
 
-#define TAG "PocketWallEC3"
+#define TAG "KalezAiC3"
 
 namespace {
 
@@ -155,7 +155,7 @@ public:
         InitializeDisplayI2c();
         InitializeDisplay();
         InitializeButton();
-        ESP_LOGI(TAG, "Pocket Wall-E C3 initialized");
+        ESP_LOGI(TAG, "KALEZ AI ESP32-C3 initialized");
     }
 
     AudioCodec* GetAudioCodec() override {
@@ -169,7 +169,7 @@ public:
 
     Display* GetDisplay() override { return display_; }
 
-    std::string GetWifiHostnamePrefix() const override { return "pocket-wall-e"; }
+    std::string GetWifiHostnamePrefix() const override { return "kalez-ai"; }
 };
 
 DECLARE_BOARD(PocketWallEC3Board);

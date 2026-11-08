@@ -131,7 +131,7 @@ def main() -> None:
 
     release_archives = sorted((PROJECT_DIR / "releases").glob("*.zip"))
     if release_archives:
-        shutil.copy2(release_archives[-1], OUTPUT_DIR / release_archives[-1].name)
+        shutil.copy2(release_archives[-1], OUTPUT_DIR / "KALEZ-AI-ESP32C3.zip")
 
     manifest = {
         "target": "esp32c3",
@@ -161,7 +161,7 @@ def main() -> None:
         )
     )
     lines = [
-        "ESP32-C3 SuperMini firmware flash manifest",
+        "KALEZ AI ESP32-C3 SuperMini firmware flash manifest",
         "Flash size: 4 MB",
         "",
         "Simple full-image flash (merged image includes build-defined offsets):",

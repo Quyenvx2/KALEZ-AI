@@ -11,6 +11,7 @@
 #include <esp_network.h>
 #include <esp_log.h>
 #include <esp_mac.h>
+#include <cJSON.h>
 #include <utility>
 
 #include <material_symbols.h>
@@ -290,17 +291,30 @@ const char* WifiBoard::GetNetworkStateIcon() {
 
 std::string WifiBoard::GetBoardJson() {
     auto& wifi = WifiManager::GetInstance();
-    std::string json = R"({"type":")" + std::string(BOARD_TYPE) + R"(",)";
-    json += R"("name":")" + std::string(BOARD_NAME) + R"(",)";
+    cJSON* root = cJSON_CreateObject();
+    if (root == nullptr) {
+        return "";
+    }
+    cJSON_AddStringToObject(root, "type", BOARD_TYPE);
+    cJSON_AddStringToObject(root, "name", BOARD_NAME);
 
     if (!wifi.IsConfigMode()) {
-        json += R"("ssid":")" + wifi.GetSsid() + R"(",)";
-        json += R"("rssi":)" + std::to_string(wifi.GetRssi()) + R"(,)";
-        json += R"("channel":)" + std::to_string(wifi.GetChannel()) + R"(,)";
-        json += R"("ip":")" + wifi.GetIpAddress() + R"(",)";
+        cJSON_AddStringToObject(root, "ssid", wifi.GetSsid().c_str());
+        cJSON_AddNumberToObject(root, "rssi", wifi.GetRssi());
+        cJSON_AddNumberToObject(root, "channel", wifi.GetChannel());
+        cJSON_AddStringToObject(root, "ip", wifi.GetIpAddress().c_str());
     }
 
-    json += R"("mac":")" + SystemInfo::GetMacAddress() + R"("})";
+    const std::string mac = SystemInfo::GetMacAddress();
+    cJSON_AddStringToObject(root, "mac", mac.c_str());
+    char* encoded = cJSON_PrintUnformatted(root);
+    if (encoded == nullptr) {
+        cJSON_Delete(root);
+        return "";
+    }
+    std::string json(encoded);
+    cJSON_free(encoded);
+    cJSON_Delete(root);
     return json;
 }
 
