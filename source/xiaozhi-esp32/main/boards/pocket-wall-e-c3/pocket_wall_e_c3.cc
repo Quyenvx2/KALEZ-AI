@@ -9,6 +9,8 @@
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
 #include <esp_log.h>
+#include <esp_timer.h>
+#include <cmath>
 #include <cstdint>
 #include <climits>
 
@@ -25,6 +27,16 @@ private:
     int32_t previous_input_ = 0;
     int32_t previous_output_ = 0;
     int32_t gain_q12_ = 4096;
+    double filtered_square_sum_ = 0.0;
+    double output_square_sum_ = 0.0;
+    uint64_t stats_sample_count_ = 0;
+    uint64_t filtered_zero_count_ = 0;
+    uint64_t output_zero_count_ = 0;
+    uint64_t filtered_clip_count_ = 0;
+    uint64_t output_clip_count_ = 0;
+    uint32_t filtered_peak_ = 0;
+    uint32_t output_peak_ = 0;
+    int64_t last_stats_log_us_ = 0;
 
 public:
     PocketAudioCodec(int sample_rate, gpio_num_t bclk, gpio_num_t ws,
@@ -60,6 +72,16 @@ protected:
             }
         }
 
+        // Accumulate pre-AGC measurements without changing the audio path.
+        for (int i = 0; i < count; ++i) {
+            const int64_t sample = filtered[i];
+            const uint64_t magnitude = static_cast<uint64_t>(sample < 0 ? -sample : sample);
+            filtered_square_sum_ += static_cast<double>(sample) * sample;
+            if (magnitude > filtered_peak_) filtered_peak_ = static_cast<uint32_t>(magnitude);
+            if (sample == 0) ++filtered_zero_count_;
+            if (magnitude >= 32700) ++filtered_clip_count_;
+        }
+
         // Automatic gain keeps quiet speech audible but backs off quickly near
         // clipping. Gain range: 0.5x..6x; target peak is about -7.4 dBFS.
         int32_t target_gain_q12 = static_cast<int32_t>((14000LL << 12) / peak);
@@ -81,6 +103,44 @@ protected:
             } else {
                 dest[i] = static_cast<int16_t>(amplified);
             }
+
+            const int32_t output_sample = dest[i];
+            const uint32_t magnitude = static_cast<uint32_t>(
+                output_sample < 0 ? -output_sample : output_sample);
+            output_square_sum_ += static_cast<double>(output_sample) * output_sample;
+            if (magnitude > output_peak_) output_peak_ = magnitude;
+            if (output_sample == 0) ++output_zero_count_;
+            if (magnitude >= 32700) ++output_clip_count_;
+        }
+
+        stats_sample_count_ += static_cast<uint64_t>(count);
+        const int64_t now_us = esp_timer_get_time();
+        if (last_stats_log_us_ == 0) last_stats_log_us_ = now_us;
+        if (now_us - last_stats_log_us_ >= 1000000 && stats_sample_count_ > 0) {
+            const double sample_count = static_cast<double>(stats_sample_count_);
+            const double filtered_rms = std::sqrt(filtered_square_sum_ / sample_count);
+            const double output_rms = std::sqrt(output_square_sum_ / sample_count);
+            ESP_LOGI(TAG,
+                     "Mic stats/1s: preAGC RMS=%.1f peak=%u zero=%llu near_clip=%llu; "
+                     "postAGC RMS=%.1f peak=%u zero=%llu near_clip=%llu; gain=%.2fx samples=%llu",
+                     filtered_rms, static_cast<unsigned>(filtered_peak_),
+                     static_cast<unsigned long long>(filtered_zero_count_),
+                     static_cast<unsigned long long>(filtered_clip_count_),
+                     output_rms, static_cast<unsigned>(output_peak_),
+                     static_cast<unsigned long long>(output_zero_count_),
+                     static_cast<unsigned long long>(output_clip_count_),
+                     gain_q12_ / 4096.0,
+                     static_cast<unsigned long long>(stats_sample_count_));
+            filtered_square_sum_ = 0.0;
+            output_square_sum_ = 0.0;
+            stats_sample_count_ = 0;
+            filtered_zero_count_ = 0;
+            output_zero_count_ = 0;
+            filtered_clip_count_ = 0;
+            output_clip_count_ = 0;
+            filtered_peak_ = 0;
+            output_peak_ = 0;
+            last_stats_log_us_ = now_us;
         }
         return count;
     }
